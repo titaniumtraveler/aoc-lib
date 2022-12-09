@@ -33,13 +33,20 @@ pub trait Day {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct Config {
     pub year: u32,
     pub day: u8,
     pub part: Part,
 }
 
-#[derive(Debug, Clone, ValueEnum)]
+impl Config {
+    pub fn new(year: u32, day: u8, part: Part) -> Self {
+        Self { year, day, part }
+    }
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
 pub enum Part {
     Part1,
     Part2,
