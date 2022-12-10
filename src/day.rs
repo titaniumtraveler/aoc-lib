@@ -16,6 +16,15 @@ macro_rules! calendar {
         }
 
     };
+    (match ($config:expr,$str:expr) {
+            $( $date:pat => $day:ty ),*
+    }) => {
+        match $config.day {
+            $($date => Ok(<$day>::run($config,$str)?),)*
+            _ => unreachable!("Day {} isn't registered", $config.day),
+        }
+
+    };
 }
 
 pub trait Day<'a> {
