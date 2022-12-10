@@ -11,20 +11,20 @@ macro_rules! calendar {
             $( $date:pat => $day:ty ),*,
     }) => {
         match $config.day {
-            $($date => <$day>::run($config,$str)?,)*
-            _ => unreachable!("Day {}", $config.day),
+            $($date => Ok(<$day>::run($config,$str)?),)*
+            _ => unreachable!("Day {} isn't registered", $config.day),
         }
 
     };
 }
 
-pub trait Day {
-    type Parser<'a>: 'a;
+pub trait Day<'a> {
+    type Parser;
     type Error: Error;
-    fn parse(str: &str) -> Result<Self::Parser<'_>, Self::Error>;
-    fn part_1(parser: Self::Parser<'_>) -> Result<u32, Self::Error>;
-    fn part_2(parser: Self::Parser<'_>) -> Result<u32, Self::Error>;
-    fn run(config: Config, str: &str) -> Result<u32, Self::Error> {
+    fn parse(input: &'a str) -> Result<Self::Parser, Self::Error>;
+    fn part_1(parser: Self::Parser) -> Result<u32, Self::Error>;
+    fn part_2(parser: Self::Parser) -> Result<u32, Self::Error>;
+    fn run(config: Config, str: &'a str) -> Result<u32, Self::Error> {
         let parser = Self::parse(str)?;
         match config.part {
             Part::Part1 => Self::part_1(parser),

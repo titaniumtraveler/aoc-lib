@@ -1,8 +1,8 @@
+pub use self::store::Store;
 use self::{
     add_test::{AddTest, AddTestError},
     fetch::{Fetch, FetchError},
     run::{Run, RunError},
-    store::Store,
 };
 use crate::day::Runner;
 use clap::{Parser, Subcommand};
@@ -21,17 +21,21 @@ pub struct Cli {
 }
 
 #[derive(Debug, Error)]
-pub enum CliError<R: Runner> {
+pub enum CliError<'a, R: Runner<'a>> {
     #[error(transparent)]
     FetchError(FetchError),
     #[error(transparent)]
-    RunError(RunError<R>),
+    RunError(RunError<'a, R>),
     #[error(transparent)]
     AddTestError(#[from] AddTestError),
 }
 
-impl Cli {
-    pub fn run<R: Runner>(&self, runner: &mut R, store: &mut Store) -> Result<(), CliError<R>> {
+impl<'a> Cli {
+    pub fn run<R: Runner<'a>>(
+        &self,
+        runner: &mut R,
+        store: &mut Store<'a>,
+    ) -> Result<(), CliError<'a, R>> {
         use CliError::*;
         match &self.command {
             Commands::Fetch(fetch) => fetch.run(store).map_err(FetchError),

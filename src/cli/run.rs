@@ -1,15 +1,14 @@
 use crate::{
-    cli::Store,
+    cli::{
+        fetch::{Fetch, FetchError},
+        store::Input,
+        Store,
+    },
     day::{Config, Part, Runner},
 };
 use chrono::{Datelike, Local};
 use clap::Args;
 use thiserror::Error;
-
-use super::{
-    fetch::{Fetch, FetchError},
-    store::Input,
-};
 
 #[derive(Debug, Args)]
 pub struct Run {
@@ -20,7 +19,11 @@ pub struct Run {
 }
 
 impl Run {
-    pub fn run<R: Runner>(&self, store: &mut Store, runner: &mut R) -> Result<(), RunError<R>> {
+    pub fn run<'a: 'b, 'b, R: Runner<'a>>(
+        &self,
+        store: &'b mut Store<'a>,
+        runner: &'b mut R,
+    ) -> Result<(), RunError<'a, R>> {
         let (input, config) = fetch_input_and_config(self, store)?;
         let actual_value = runner.run(config, input.input()).map_err(RunError::Run)?;
         println!("{actual_value}");
@@ -43,7 +46,7 @@ impl Run {
     }
 }
 
-fn fetch_input_and_config<'a, 'b>(
+fn fetch_input_and_config<'a: 'b, 'b>(
     run: &Run,
     store: &'b mut Store<'a>,
 ) -> Result<(&'b Input<'a>, Config), FetchError> {
@@ -65,7 +68,7 @@ fn fetch_input_and_config<'a, 'b>(
 }
 
 #[derive(Debug, Error)]
-pub enum RunError<R: Runner> {
+pub enum RunError<'a, R: Runner<'a>> {
     #[error(transparent)]
     Fetch(#[from] FetchError),
     #[error("failed running task {0}")]

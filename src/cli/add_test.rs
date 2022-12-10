@@ -21,7 +21,7 @@ pub struct AddTest {
 
 impl AddTest {
     pub fn run(&self, store: &mut Store) -> Result<(), AddTestError> {
-        todo!()
+        todo!("{self:?}, {store:?}")
     }
 }
 

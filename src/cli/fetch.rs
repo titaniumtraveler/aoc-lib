@@ -6,6 +6,8 @@ use clap::Args;
 use reqwest::blocking::Client;
 use thiserror::Error;
 
+use super::store::CookieError;
+
 #[derive(Debug, Args)]
 pub struct Fetch {
     #[arg(short, long, default_value_t = false)]
@@ -17,7 +19,7 @@ pub struct Fetch {
 }
 
 impl Fetch {
-    pub fn run<'a>(&self, store: &mut Store<'a>) -> Result<(), FetchError> {
+    pub fn run(&self, store: &mut Store) -> Result<(), FetchError> {
         let now = Local::now();
 
         let year = match self.year {
@@ -29,7 +31,7 @@ impl Fetch {
             None => now.day().try_into()?,
         };
 
-        let cookie = store.cookie();
+        let cookie_result = store.try_cookie();
 
         if !self.force && self.ignore_existing {
             Self::fetch(store, year, day)?;
@@ -37,7 +39,7 @@ impl Fetch {
         } else if !self.force && !self.ignore_existing {
             match store.entry_input(year, day, "input") {
                 Entry::Vacant(vacant) => {
-                    vacant.insert(Input::new(Self::fetch_data(year, day, cookie)?));
+                    vacant.insert(Input::new(Self::fetch_data(year, day, cookie_result?)?));
                     Ok(())
                 }
                 Entry::Occupied(_) => Err(FetchError::AlreadyExists { year, day }),
@@ -47,7 +49,7 @@ impl Fetch {
                 year,
                 day,
                 "input",
-                Input::new(Self::fetch_data(year, day, cookie)?),
+                Input::new(Self::fetch_data(year, day, cookie_result?)?),
             );
             Ok(())
         }
@@ -57,9 +59,12 @@ impl Fetch {
         store: &'b mut Store<'a>,
         year: u32,
         day: u8,
-    ) -> Result<&'b Input<'a>, reqwest::Error> {
-        let cookie = store.cookie();
-        store.get_or_insert(year, day, "input", || Self::fetch_data(year, day, cookie))
+    ) -> Result<&'b Input<'a>, FetchError> {
+        let cookie_result = store.try_cookie();
+        store.get_or_insert(year, day, "input", || {
+            let cookie = cookie_result?;
+            Ok(Self::fetch_data(year, day, cookie)?)
+        })
     }
 
     pub fn fetch_data(year: u32, day: u8, cookie: &str) -> Result<String, reqwest::Error> {
@@ -77,6 +82,8 @@ pub enum FetchError {
     InvalidTime(#[from] TryFromIntError),
     #[error("the entry from the {day}. 12. {year} already exists")]
     AlreadyExists { year: u32, day: u8 },
+    #[error(transparent)]
+    CookieError(#[from] CookieError),
     #[error(r#"failed to fetch data from "adventofcode.com": {0}"#)]
     ReqwestError(#[from] reqwest::Error),
 }

@@ -2,18 +2,26 @@ use serde::{Deserialize, Serialize};
 use std::{
     borrow::Cow,
     collections::{hash_map::Entry, HashMap},
+    mem::transmute,
 };
+use thiserror::Error;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Store<'a> {
     #[serde(flatten)]
     years: HashMap<u32, HashMap<u8, Day<'a>>>,
-    cookie: &'a str,
+    pub cookie: Option<&'a str>,
+}
+
+#[derive(Debug, Error)]
+pub enum CookieError {
+    #[error("the cookie is missing: can't access puzzle inputs")]
+    Missing,
 }
 
 impl<'a> Store<'a> {
-    pub fn cookie(&self) -> &'a str {
-        self.cookie
+    pub fn try_cookie(&self) -> Result<&'a str, CookieError> {
+        self.cookie.ok_or(CookieError::Missing)
     }
 
     pub fn get_input(&self, year: u32, day: u8, name: &str) -> Option<&Input<'a>> {
@@ -104,7 +112,20 @@ impl<'a> Input<'a> {
             solution2: None,
         }
     }
-    pub fn input(&self) -> &str {
-        self.input.as_ref()
+    pub fn input<'b>(&'b self) -> &'a str {
+        match &self.input {
+            Cow::Borrowed(str) => str,
+            // Safety?: I hope that nobody uses this and then invalidates the &'a str?
+            //
+            // I know that that's unsafe and may lead to undefined behavior,
+            // but it's FINE!
+            //
+            // Also all errors return by the Runner (which are the only reason why I even need this.
+            // should be returned before deallocation Store. So all references to the Strings should be
+            // gone by then.
+            //
+            // Just don't run. Keep the errors around. And then replace one of the inputs. Please.
+            Cow::Owned(str) => unsafe { transmute::<&'b str, &'a str>(str.as_str()) },
+        }
     }
 }
