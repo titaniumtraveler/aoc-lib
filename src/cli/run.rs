@@ -71,7 +71,7 @@ fn fetch_input_and_config<'a: 'b, 'b>(
 pub enum RunError<'a, R: Runner<'a>> {
     #[error(transparent)]
     Fetch(#[from] FetchError),
-    #[error("failed running task {0}")]
+    #[error("failed running task: {0}")]
     Run(R::Error),
     #[error("expected return value of {expected} and got {actual_value}")]
     ResultInconsistent { expected: u32, actual_value: u32 },
